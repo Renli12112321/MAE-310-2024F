@@ -1,9 +1,14 @@
 clear all; clc; clf; % clean the memory, screen, and figure
 
 % Problem definition
-f = @(x) -20*x.^3; % f(x)
-g = 1.0;           % u    = g  at x = 1
-h = 0.0;           % -u,x = h  at x = 0
+f = @(x) -20*x.^3;  % f(x)
+g = 1.0;            % u    = g  at x = 1
+h = 0.0;            % -u,x = h  at x = 0
+ex_u = @(x) x.^5;   % exact solution
+ex_u2= @(x) x.^10;  % exact u square
+ex_d2= @(x) 25*x.^8;% exact u,x square
+denoL2 = sqrt(integral(ex_u2, 0, 1)); % L2分母
+denoH1 = sqrt(integral(ex_d2, 0, 1)); % H1分母
 
 % Setup the quadrature rule
 n_int = 10;
@@ -81,7 +86,42 @@ for n_el = 2:2:16      % mesh with element number from 2 to 16
 
     % Solve Kd = F equation
     d_temp = K \ F;
-   
+    disp = [d_temp; g];
+
+    n_sam = 20;
+    xi_sam = -1 : (2/n_sam) : 1;
+
+    x_sam = zeros(n_el * n_sam + 1, 1);
+    y_sam = x_sam; % store the exact solution value at sampling points
+    u_sam = x_sam; % store the numerical solution value at sampling pts
+    el2_sam = x_sam; % 存储L2差值
+    
+    for ee = 1 : n_el
+        x_ele = x_coor( IEN(ee, :) );
+        u_ele = disp( IEN(ee, :) );
+
+        if ee == n_el
+            n_sam_end = n_sam+1;
+        else
+            n_sam_end = n_sam;
+        end
+
+        for ll = 1 : n_sam_end
+            x_l = 0.0;
+            u_l = 0.0;
+            for aa = 1 : n_en
+                x_l = x_l + x_ele(aa) * PolyShape(pp, aa, xi_sam(ll), 0);
+                u_l = u_l + u_ele(aa) * PolyShape(pp, aa, xi_sam(ll), 0);
+            end
+
+            x_sam( (ee-1)*n_sam + ll ) = x_l;
+            u_sam( (ee-1)*n_sam + ll ) = u_l;
+            y_sam( (ee-1)*n_sam + ll ) = x_l^5;
+            el2_sam( (ee-1)*n_sam + ll ) = u_1-x_l^5;
+
+        end
+    end
+
 end
 
 
