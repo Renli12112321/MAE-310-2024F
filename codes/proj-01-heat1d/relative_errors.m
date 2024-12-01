@@ -6,6 +6,7 @@ g = 1.0;            % u    = g  at x = 1
 h = 0.0;            % -u,x = h  at x = 0
 ex_u = @(x) x.^5;   % exact solution
 ex_u2= @(x) x.^10;  % exact u square
+ex_du= @(x) 5*x.^4; % exact u,x
 ex_d2= @(x) 25*x.^8;% exact u,x square
 denoL2 = sqrt(integral(ex_u2, 0, 1)); % L2分母
 denoH1 = sqrt(integral(ex_d2, 0, 1)); % H1分母
@@ -13,6 +14,11 @@ denoH1 = sqrt(integral(ex_d2, 0, 1)); % H1分母
 % Setup the quadrature rule
 n_int = 10;
 [xi, weight] = Gauss(n_int, -1, 1);
+
+% 存储不同mesh结果的数组
+logeL2 = zeros(8,1);
+logeH1 = zeros(8,1);
+logh   = zeros(8,1);
 
 % Setup the mesh
 pp   = 2;              % polynomial degree
@@ -117,12 +123,38 @@ for n_el = 2:2:16      % mesh with element number from 2 to 16
             x_sam( (ee-1)*n_sam + ll ) = x_l;
             u_sam( (ee-1)*n_sam + ll ) = u_l;
             y_sam( (ee-1)*n_sam + ll ) = x_l^5;
-            el2_sam( (ee-1)*n_sam + ll ) = u_1-x_l^5;
+            el2_sam( (ee-1)*n_sam + ll ) = u_l-x_l^5;
 
         end
     end
 
+    % 计算出eL2的分子部分
+    numeL2 = 0;
+    numeH1 = 0;
+    for ee = 1 :  n_el * n_sam
+        numeL2 = numeL2 + (x_sam(ee+1)-x_sam(ee))*el2_sam(ee)^2;
+        numeH1 = numeH1 + (x_sam(ee+1)-x_sam(ee))*((u_sam(ee+1)-u_sam(ee))/(x_sam(ee+1)-x_sam(ee))-ex_du(x_sam(ee)))^2;
+    end
+
+    % 保存该mesh结果到数组
+    numeL2 = sqrt(numeL2);
+    numeH1 = sqrt(numeH1);
+    logeL2(n_el/2) = log(numeL2/denoL2);
+    logeH1(n_el/2) = log(numeH1/denoH1);
+    logh  (n_el/2) = log(hh);
+
 end
 
+% 画图
 
+plot(logh, logeL2, '-r','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error L2)');
+
+hold on;
+
+figure
+plot(logh, logeH1, '-k','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error H1)');
 
