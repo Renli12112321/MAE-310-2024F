@@ -145,16 +145,22 @@ for n_el = 2:2:16      % mesh with element number from 2 to 16
 
 end
 
-% 画图
 
+% 画图
 plot(logh, logeL2, '-r','LineWidth',3);
 xlabel('log(h)');
 ylabel('log(error L2)');
-
 hold on;
+p1 = polyfit(logh,logeL2,1);
+y1 = polyval(p1,logh);
+plot(logh,y1, '-b','LineWidth',1);
 
 figure
 plot(logh, logeH1, '-k','LineWidth',3);
 xlabel('log(h)');
 ylabel('log(error H1)');
+hold on;
+p2 = polyfit(logh,logeH1,1);
+y2 = polyval(p2,logh);
+plot(logh,y2, '-b','LineWidth',1);
 
