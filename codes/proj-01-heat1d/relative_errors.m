@@ -5,11 +5,7 @@ f = @(x) -20*x.^3;  % f(x)
 g = 1.0;            % u    = g  at x = 1
 h = 0.0;            % -u,x = h  at x = 0
 ex_u = @(x) x.^5;   % exact solution
-ex_u2= @(x) x.^10;  % exact u square
 ex_du= @(x) 5*x.^4; % exact u,x
-ex_d2= @(x) 25*x.^8;% exact u,x square
-denoL2 = sqrt(integral(ex_u2, 0, 1)); % L2分母
-denoH1 = sqrt(integral(ex_d2, 0, 1)); % H1分母
 
 % Setup the quadrature rule
 n_int = 10;
@@ -24,10 +20,11 @@ logh   = zeros(8,1);
 pp   = 2;              % polynomial degree
 n_en = pp + 1;         % number of element or local nodes
 for n_el = 2:2:16      % mesh with element number from 2 to 16
-    hh = 1 / n_el /n_en;
-    x_coor = 0 : hh : 1;
-    n_np = n_el * pp + 1;  % number of nodal points
-    n_eq = n_np - 1;       % number of equations
+   n_np = n_el * pp + 1;  % number of nodal points
+   n_eq = n_np - 1;       % number of equations
+   n_int = 10;
+   hh = 1.0 / (n_np - 1); % space between two adjacent nodes
+   x_coor = 0 : hh : 1;   % nodal coordinates for equally spaced nodes
 
     % Setup the IEN
     IEN = zeros(n_el, n_en);
@@ -101,7 +98,7 @@ for n_el = 2:2:16      % mesh with element number from 2 to 16
     y_sam = x_sam; % store the exact solution value at sampling points
     u_sam = x_sam; % store the numerical solution value at sampling pts
     el2_sam = x_sam; % 存储L2差值
-    
+
     for ee = 1 : n_el
         x_ele = x_coor( IEN(ee, :) );
         u_ele = disp( IEN(ee, :) );
@@ -128,19 +125,40 @@ for n_el = 2:2:16      % mesh with element number from 2 to 16
         end
     end
 
-    % 计算出eL2的分子部分
-    numeL2 = 0;
-    numeH1 = 0;
-    for ee = 1 :  n_el * n_sam
-        numeL2 = numeL2 + (x_sam(ee+1)-x_sam(ee))*el2_sam(ee)^2;
-        numeH1 = numeH1 + (x_sam(ee+1)-x_sam(ee))*((u_sam(ee+1)-u_sam(ee))/(x_sam(ee+1)-x_sam(ee))-ex_du(x_sam(ee)))^2;
+    % calculate the error
+
+    L2_top = 0; L2_bot = 0; H1_top = 0; H1_bot = 0;
+
+    for ee = 1 : n_el
+        x_ele = x_coor( IEN(ee, :) );
+        u_ele = disp( IEN(ee, :) );
+
+        for ll = 1 : n_int
+            x_l = 0.0; uh = 0.0; dx_dxi = 0.0; uh_xi = 0.0;
+            for aa = 1 : n_en
+                x_l    = x_l    + x_ele(aa) * PolyShape(pp, aa, xi(ll), 0);
+                uh     = uh     + u_ele(aa) * PolyShape(pp, aa, xi(ll), 0);
+                dx_dxi = dx_dxi + x_ele(aa) * PolyShape(pp, aa, xi(ll), 1);
+                uh_xi  = uh_xi  + u_ele(aa) * PolyShape(pp, aa, xi(ll), 1);
+            end
+            dxi_dx = 1.0 / dx_dxi;
+
+            L2_top = L2_top + weight(ll) * (uh - ex_u(x_l))^2 * dx_dxi;
+            L2_bot = L2_bot + weight(ll) * ex_u(x_l)^2 * dx_dxi;
+
+            H1_top = H1_top + weight(ll) * ( uh_xi * dxi_dx - ex_du(x_l) )^2 * dx_dxi;
+            H1_bot = H1_bot + weight(ll) * ex_du(x_l)^2 * dx_dxi;
+
+        end
     end
 
+    L2_top = sqrt(L2_top); L2_bot = sqrt(L2_bot);
+    H1_top = sqrt(H1_top); H1_bot = sqrt(H1_bot);
+
+
     % 保存该mesh结果到数组
-    numeL2 = sqrt(numeL2);
-    numeH1 = sqrt(numeH1);
-    logeL2(n_el/2) = log(numeL2/denoL2);
-    logeH1(n_el/2) = log(numeH1/denoH1);
+    logeL2(n_el/2) = log(L2_top / L2_bot);
+    logeH1(n_el/2) = log(H1_top / H1_bot);
     logh  (n_el/2) = log(hh);
 
 end
