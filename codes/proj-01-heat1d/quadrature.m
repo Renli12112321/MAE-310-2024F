@@ -32,12 +32,13 @@ end
 ID = 1 : n_np;
 ID(end) = 0;
 
-% allocate the stiffness matrix
-K = spalloc(n_eq, n_eq, (2*pp+1)*n_eq);
-F = zeros(n_eq, 1);
 
 % change the quadrature point number from 1 to 6
 for n_int = 1:1:qp
+    
+    % allocate the stiffness matrix
+    K = spalloc(n_eq, n_eq, (2*pp+1)*n_eq);
+    F = zeros(n_eq, 1);
 
     % Setup the quadrature rule
     [xi, weight] = Gauss(n_int, -1, 1);
