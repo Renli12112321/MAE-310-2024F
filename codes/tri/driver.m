@@ -16,10 +16,10 @@ n_int     = n_int_xi * n_int_eta;
 [xi, eta, weight] = Gauss2D(n_int_xi, n_int_eta);
 
 % mesh generation
-n_en   = 4;               % number of nodes in an element
-n_el_x = 60;               % number of elements in x-dir
-n_el_y = 60;               % number of elements in y-dir
-n_el   = n_el_x * n_el_y; % total number of elements
+n_en   = 3;                   % number of nodes in an triangle element
+n_el_x = 60;                  % number of elements in x-dir
+n_el_y = 60;                  % number of elements in y-dir
+n_el   = n_el_x * n_el_y * 2; % total number of elements
 
 n_np_x = n_el_x + 1;      % number of nodal points in x-dir
 n_np_y = n_el_y + 1;      % number of nodal points in y-dir
@@ -45,10 +45,12 @@ IEN = zeros(n_el, n_en);
 for ex = 1 : n_el_x
   for ey = 1 : n_el_y
     ee = (ey-1) * n_el_x + ex; % element index
-    IEN(ee, 1) = (ey-1) * n_np_x + ex;
-    IEN(ee, 2) = (ey-1) * n_np_x + ex + 1;
-    IEN(ee, 3) =  ey    * n_np_x + ex + 1;
-    IEN(ee, 4) =  ey    * n_np_x + ex;
+    IEN(ee*2-1, 1) = (ey-1) * n_np_x + ex;
+    IEN(ee*2-1, 2) = (ey-1) * n_np_x + ex + 1;
+    IEN(ee*2-1, 3) =  ey    * n_np_x + ex;
+    IEN(ee*2, 1)   =  ey    * n_np_x + ex + 1;
+    IEN(ee*2, 2)   =  ey    * n_np_x + ex;
+    IEN(ee*2, 3)   = (ey-1) * n_np_x + ex + 1;
   end
 end
 
@@ -84,9 +86,9 @@ for ee = 1 : n_el
     dx_dxi = 0.0; dx_deta = 0.0;
     dy_dxi = 0.0; dy_deta = 0.0;
     for aa = 1 : n_en
-      x_l = x_l + x_ele(aa) * Quad(aa, xi(ll), eta(ll));
-      y_l = y_l + y_ele(aa) * Quad(aa, xi(ll), eta(ll));    
-      [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
+      x_l = x_l + x_ele(aa) * tri(aa, xi(ll), eta(ll));
+      y_l = y_l + y_ele(aa) * tri(aa, xi(ll), eta(ll));    
+      [Na_xi, Na_eta] = tri_grad(aa, xi(ll), eta(ll));
       dx_dxi  = dx_dxi  + x_ele(aa) * Na_xi;
       dx_deta = dx_deta + x_ele(aa) * Na_eta;
       dy_dxi  = dy_dxi  + y_ele(aa) * Na_xi;
