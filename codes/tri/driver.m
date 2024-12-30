@@ -98,16 +98,16 @@ for ee = 1 : n_el
     detJ = dx_dxi * dy_deta - dx_deta * dy_dxi;
     
     for aa = 1 : n_en
-      Na = Quad(aa, xi(ll), eta(ll));
-      [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
+      Na = tri(aa, xi(ll), eta(ll));
+      [Na_xi, Na_eta] = tri_grad(aa, xi(ll), eta(ll));
       Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
       Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
       
       f_ele(aa) = f_ele(aa) + weight(ll) * detJ * f(x_l, y_l) * Na;
       
       for bb = 1 : n_en
-        Nb = Quad(bb, xi(ll), eta(ll));
-        [Nb_xi, Nb_eta] = Quad_grad(bb, xi(ll), eta(ll));
+        Nb = tri(bb, xi(ll), eta(ll));
+        [Nb_xi, Nb_eta] = tri_grad(bb, xi(ll), eta(ll));
         Nb_x = (Nb_xi * dy_deta - Nb_eta * dy_dxi) / detJ;
         Nb_y = (-Nb_xi * dx_deta + Nb_eta * dx_dxi) / detJ;
         
