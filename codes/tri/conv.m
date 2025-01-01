@@ -159,39 +159,53 @@ for n_me = 60:20:200
 
     % calculate the error
 
-    L2_top = 0; L2_bot = 0; H1_top = 0; H1_bot = 0;
+    L2 = 0; H1 = 0;
 
     for ee = 1 : n_el
         x_ele = x_coor( IEN(ee, :) );
+        y_ele = y_coor(IEN(ee,:));
         u_ele = disp( IEN(ee, :) );
 
         for ll = 1 : n_int
-            x_l = 0.0; uh = 0.0; dx_dxi = 0.0; uh_xi = 0.0;
+            x_l = 0.0; y_l = 0.0;
+            dx_dxi = 0.0; dx_deta = 0.0;
+            dy_dxi = 0.0; dy_deta = 0.0;
+            uh = 0.0; 
+            uh_x = 0.0; uh_y = 0.0;
             for aa = 1 : n_en
-                x_l    = x_l    + x_ele(aa) * PolyShape(pp, aa, xi(ll), 0);
-                uh     = uh     + u_ele(aa) * PolyShape(pp, aa, xi(ll), 0);
-                dx_dxi = dx_dxi + x_ele(aa) * PolyShape(pp, aa, xi(ll), 1);
-                uh_xi  = uh_xi  + u_ele(aa) * PolyShape(pp, aa, xi(ll), 1);
+                x_l = x_l + x_ele(aa) * tri(aa, xi(ll), eta(ll));
+                y_l = y_l + y_ele(aa) * tri(aa, xi(ll), eta(ll));
+                [Na_xi, Na_eta] = tri_grad(aa, xi(ll), eta(ll));
+                dx_dxi  = dx_dxi  + x_ele(aa) * Na_xi;
+                dx_deta = dx_deta + x_ele(aa) * Na_eta;
+                dy_dxi  = dy_dxi  + y_ele(aa) * Na_xi;
+                dy_deta = dy_deta + y_ele(aa) * Na_eta;
             end
-            dxi_dx = 1.0 / dx_dxi;
+            detJ = dx_dxi * dy_deta - dx_deta * dy_dxi;
 
-            L2_top = L2_top + weight(ll) * (uh - ex_u(x_l))^2 * dx_dxi;
-            L2_bot = L2_bot + weight(ll) * ex_u(x_l)^2 * dx_dxi;
+            for aa = 1 : n_en
+                Na = tri(aa, xi(ll), eta(ll));
+                [Na_xi, Na_eta] = tri_grad(aa, xi(ll), eta(ll));
+                Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
+                Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
+                uh   = uh   + u_h(aa) * Na;
+                uh_x = uh_x + u_h(aa) * Na_x;
+                uh_y = uh_y + u_h(aa) * Na_y;
+            end
 
-            H1_top = H1_top + weight(ll) * ( uh_xi * dxi_dx - ex_du(x_l) )^2 * dx_dxi;
-            H1_bot = H1_bot + weight(ll) * ex_du(x_l)^2 * dx_dxi;
+            L2 = L2 + weight(ll) * (uh - exact(x_l,y_l))^2 * detJ;
+            H1 = H1 + weight(ll) * ((uh_x - exact_x(x_l,y_l) )^2 + (uh_y - exact_y(x_l,y_l) )^2) * detJ;
 
         end
     end
 
-    L2_top = sqrt(L2_top); L2_bot = sqrt(L2_bot);
-    H1_top = sqrt(H1_top); H1_bot = sqrt(H1_bot);
-
+    L2 = sqrt(L2); 
+    H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_el/2) = log(L2_top / L2_bot);
-    logeH1(n_el/2) = log(H1_top / H1_bot);
-    logh  (n_el/2) = log(hh);
+    logeL2(n_el/20) = log(L2);
+    logeH1(n_el/20) = log(H1);
+    logh  (n_el/20) = log(hx);
 
 end
 % save the solution vector and number of elements to disp with name
