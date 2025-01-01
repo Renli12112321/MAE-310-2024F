@@ -23,8 +23,8 @@ for n_me = 60:20:200
 
 % mesh generation
 n_en   = 4;               % number of nodes in an element
-n_el_x = 60;               % number of elements in x-dir
-n_el_y = 60;               % number of elements in y-dir
+n_el_x = n_me;               % number of elements in x-dir
+n_el_y = n_me;               % number of elements in y-dir
 n_el   = n_el_x * n_el_y; % total number of elements
 
 n_np_x = n_el_x + 1;      % number of nodal points in x-dir
@@ -199,9 +199,9 @@ end
     H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_el/20-2) = log(L2);
-    logeH1(n_el/20-2) = log(H1);
-    logh  (n_el/20-2) = log(hx);
+    logeL2(n_me/20-2) = log(L2);
+    logeH1(n_me/20-2) = log(H1);
+    logh  (n_me/20-2) = log(hx);
 
 end
 % save the solution vector and number of elements to disp with name
