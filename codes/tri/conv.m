@@ -158,7 +158,6 @@ for n_me = 60:20:200
 
 
     % calculate the error
-
     L2 = 0; H1 = 0;
 
     for ee = 1 : n_el
@@ -203,9 +202,9 @@ for n_me = 60:20:200
     H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_el/20-2) = log(L2);
-    logeH1(n_el/20-2) = log(H1);
-    logh  (n_el/20-2) = log(hx);
+    logeL2(n_me/20-2) = log(L2);
+    logeH1(n_me/20-2) = log(H1);
+    logh  (n_me/20-2) = log(hx);
 
 end
 % save the solution vector and number of elements to disp with name
