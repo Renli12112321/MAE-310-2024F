@@ -188,9 +188,9 @@ for n_me = 60:20:200
                 [Na_xi, Na_eta] = tri_grad(aa, xi(ll), eta(ll));
                 Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
                 Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
-                uh   = uh   + u_h(aa) * Na;
-                uh_x = uh_x + u_h(aa) * Na_x;
-                uh_y = uh_y + u_h(aa) * Na_y;
+                uh   = uh   + u_ele(aa) * Na;
+                uh_x = uh_x + u_ele(aa) * Na_x;
+                uh_y = uh_y + u_ele(aa) * Na_y;
             end
 
             L2 = L2 + weight(ll) * (uh - exact(x_l,y_l))^2 * detJ;
@@ -211,5 +211,22 @@ end
 % save the solution vector and number of elements to disp with name
 % HEAT.mat
 %save("HEAT", "disp", "n_el_x", "n_el_y");
+% 画图
+plot(logh, logeL2, '-r','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error L2)');
+hold on;
+p1 = polyfit(logh,logeL2,1);
+y1 = polyval(p1,logh);
+plot(logh,y1, '-b','LineWidth',1);
+
+figure
+plot(logh, logeH1, '-k','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error H1)');
+hold on;
+p2 = polyfit(logh,logeH1,1);
+y2 = polyval(p2,logh);
+plot(logh,y2, '-b','LineWidth',1);
 
 % EOF
