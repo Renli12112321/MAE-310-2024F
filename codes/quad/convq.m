@@ -15,6 +15,12 @@ n_int_eta = 3;
 n_int     = n_int_xi * n_int_eta;
 [xi, eta, weight] = Gauss2D(n_int_xi, n_int_eta);
 
+% mesh size loop
+logeL2 = zeros(8,1);
+logeH1 = zeros(8,1);
+logh   = zeros(8,1);
+for n_me = 60:20:200
+
 % mesh generation
 n_en   = 4;               % number of nodes in an element
 n_el_x = 60;               % number of elements in x-dir
@@ -148,8 +154,75 @@ for ii = 1 : n_np
   end
 end
 
+  % calculate the error
+    L2 = 0; H1 = 0;
+
+    for ee = 1 : n_el
+        x_ele = x_coor( IEN(ee, :) );
+        y_ele = y_coor(IEN(ee,:));
+        u_ele = disp( IEN(ee, :) );
+
+        for ll = 1 : n_int
+            x_l = 0.0; y_l = 0.0;
+            dx_dxi = 0.0; dx_deta = 0.0;
+            dy_dxi = 0.0; dy_deta = 0.0;
+            uh = 0.0; 
+            uh_x = 0.0; uh_y = 0.0;
+            for aa = 1 : n_en
+                x_l = x_l + x_ele(aa) * Quad(aa, xi(ll), eta(ll));
+                y_l = y_l + y_ele(aa) * Quad(aa, xi(ll), eta(ll));
+                [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
+                dx_dxi  = dx_dxi  + x_ele(aa) * Na_xi;
+                dx_deta = dx_deta + x_ele(aa) * Na_eta;
+                dy_dxi  = dy_dxi  + y_ele(aa) * Na_xi;
+                dy_deta = dy_deta + y_ele(aa) * Na_eta;
+            end
+            detJ = dx_dxi * dy_deta - dx_deta * dy_dxi;
+
+            for aa = 1 : n_en
+                Na = Quad(aa, xi(ll), eta(ll));
+                [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
+                Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
+                Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
+                uh   = uh   + u_ele(aa) * Na;
+                uh_x = uh_x + u_ele(aa) * Na_x;
+                uh_y = uh_y + u_ele(aa) * Na_y;
+            end
+
+            L2 = L2 + weight(ll) * (uh - exact(x_l,y_l))^2 * detJ;
+            H1 = H1 + weight(ll) * ((uh_x - exact_x(x_l,y_l) )^2 + (uh_y - exact_y(x_l,y_l) )^2) * detJ;
+
+        end
+    end
+
+    L2 = sqrt(L2); 
+    H1 = sqrt(H1); 
+
+    % 保存该mesh结果到数组
+    logeL2(n_el/20-2) = log(L2);
+    logeH1(n_el/20-2) = log(H1);
+    logh  (n_el/20-2) = log(hx);
+
+end
 % save the solution vector and number of elements to disp with name
 % HEAT.mat
 %save("HEAT", "disp", "n_el_x", "n_el_y");
+% 画图
+plot(logh, logeL2, '-r','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error L2)');
+hold on;
+p1 = polyfit(logh,logeL2,1);
+y1 = polyval(p1,logh);
+plot(logh,y1, '-b','LineWidth',1);
+
+figure
+plot(logh, logeH1, '-k','LineWidth',3);
+xlabel('log(h)');
+ylabel('log(error H1)');
+hold on;
+p2 = polyfit(logh,logeH1,1);
+y2 = polyval(p2,logh);
+plot(logh,y2, '-b','LineWidth',1);
 
 % EOF
