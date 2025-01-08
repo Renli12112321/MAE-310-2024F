@@ -1,13 +1,18 @@
 clear all; clc;
 
-kappa = 1.0; % conductivity
+E      = 1e9;   %杨氏模量
+nu     = 0.3;   %泊松比
+lambda = E * nu / ((1 + nu) * (1 - 2 * nu));
+mu     = E / (2 * (1 + nu));
+D      = [lambda + 2 * mu, lambda, 0; lambda, lambda + 2 * mu, 0; 0, 0, mu];%根据note L11算出D矩阵
+
 
 % exact solution
 exact = @(x,y) x*(1-x)*y*(1-y);
 exact_x = @(x,y) (1-2*x)*y*(1-y);
 exact_y = @(x,y) x*(1-x)*(1-2*y);
 
-f = @(x,y) 2.0*kappa*x*(1-x) + 2.0*kappa*y*(1-y); % source term
+%f = @(x,y) 2.0*kappa*x*(1-x) + 2.0*kappa*y*(1-y); % source term
 
 % quadrature rule
 n_int_xi  = 3;
