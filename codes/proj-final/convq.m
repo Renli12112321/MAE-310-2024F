@@ -9,20 +9,32 @@ D      = [lambda + 2 * mu, lambda,          0;
           0,               0,               mu];%根据note L11算出D矩阵
 
 
-%loop修改思路
+%loop修改思路:
 %应力应变问题每个节点有两个自由度（位移u,v）
 %应力应变问题中，刚度矩阵由应变-位移矩阵B和材料刚度矩阵D乘积确定
 %形函数导数用于构建应变-位移矩阵B，而非计算梯度
+%设定精确的位移，一阶导确定应变精确解，结合D矩阵可得应力精确解
+%
 
-% 假设解
+% 人工设定位移解
 u_exact = @(x, y) x*(1-x)*y*(1-y);
 v_exact = @(x, y) x*(1-x)*y*(1-y);
 
-% 一阶导数
+% 一阶导数（得出应变的精确解）
 u_x = @(x, y) (1 - 2 * x) * y * (1 - y); % du/dx
 u_y = @(x, y) x * (1 - x) * (1 - 2 * y); % du/dy
 v_x = @(x, y) (1 - 2 * x) * y * (1 - y); % dv/dx
 v_y = @(x, y) x * (1 - x) * (1 - 2 * y); % dv/dy
+
+%应变精确解
+epsilon_xx = @(x, y) u_x(x, y);
+epsilon_yy = @(x, y) v_y(x, y);
+gamma_xy = @(x, y) u_y(x, y) + v_x(x, y);
+
+% 应力精确解
+sigma_xx = @(x, y) (lambda + 2 * mu) * epsilon_xx(x, y) + lambda * epsilon_yy(x, y);
+sigma_yy = @(x, y) (lambda + 2 * mu) * epsilon_yy(x, y) + lambda * epsilon_xx(x, y);
+sigma_xy = @(x, y) mu * gamma_xy(x, y);
 
 % 二阶导数
 u_xx = @(x, y) -2 * y * (1 - y); % d²u/dx²
@@ -51,7 +63,7 @@ n_int     = n_int_xi * n_int_eta;
 logeL2 = zeros(8,1);
 logeH1 = zeros(8,1);
 logh   = zeros(8,1);
-for n_me = 60:20:200
+for n_me = 6:2:20
 
 % mesh generation
 n_en   = 4;               % number of nodes in an element
@@ -91,7 +103,7 @@ for ex = 1 : n_el_x
 end
 
 % ID array
-ID = zeros(n_np,1);
+ID = zeros(n_np,2);
 counter = 0;
 for ny = 2 : n_np_y - 1
   for nx = 2 : n_np_x - 1
@@ -152,11 +164,11 @@ for ee = 1 : n_el
         Nb_y = (-Nb_xi * dx_deta + Nb_eta * dx_dxi) / detJ;
         
         B = zeros(3, n_en * 2); % 应变-位移矩阵
-        for aa = 1:n_en
-          B(1, 2*aa-1) = Na_x; % epsilon_xx
-          B(2, 2*aa)   = Na_y; % epsilon_yy
-          B(3, 2*aa-1) = Na_y; % gamma_xy
-          B(3, 2*aa)   = Na_x; % gamma_xy
+        for ii = 1:n_en
+          B(1, 2*ii-1) = Na_x; % epsilon_xx
+          B(2, 2*ii)   = Na_y; % epsilon_yy
+          B(3, 2*ii-1) = Na_y; % gamma_xy
+          B(3, 2*ii)   = Na_x; % gamma_xy
         end
 
       k_ele = k_ele + B' * D * B * detJ * weight(ll);
@@ -189,15 +201,17 @@ end
 dn = K \ F;
 
 % insert dn back into the vector for all nodes
-disp = zeros(n_np, 1);
+disp = zeros(n_np, 2);
 
 for ii = 1 : n_np
-  index = ID(ii);
+    for jj = 1 : 2
+  index = ID(ii , jj);
   if index > 0
     disp(ii) = dn(index);
   else
     % modify disp with the g data. Here it does nothing because g is zero
   end
+    end
 end
 
   % calculate the error
@@ -206,7 +220,7 @@ end
     for ee = 1 : n_el
         x_ele = x_coor( IEN(ee, :) );
         y_ele = y_coor(IEN(ee,:));
-        u_ele = disp( IEN(ee, :) );
+        u_ele = disp( IEN(ee, :), :);
 
         for ll = 1 : n_int
             x_l = 0.0; y_l = 0.0;
@@ -235,8 +249,8 @@ end
                 uh_y = uh_y + u_ele(aa) * Na_y;
             end
 
-            L2 = L2 + weight(ll) * (uh - exact(x_l,y_l))^2 * detJ;
-            H1 = H1 + weight(ll) * ((uh_x - exact_x(x_l,y_l) )^2 + (uh_y - exact_y(x_l,y_l) )^2) * detJ;
+            L2 = L2 + weight(ll) * (uh - u_exact(x_l,y_l))^2 * detJ;
+            H1 = H1 + weight(ll) * ((uh_x - u_x(x_l,y_l) )^2 + (uh_y - u_y(x_l,y_l) )^2) * detJ;
 
         end
     end
@@ -245,9 +259,9 @@ end
     H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_me/20-2) = log(L2);
-    logeH1(n_me/20-2) = log(H1);
-    logh  (n_me/20-2) = log(hx);
+    logeL2(n_me/2-2) = log(L2);
+    logeH1(n_me/2-2) = log(H1);
+    logh  (n_me/2-2) = log(hx);
 
 end
 % save the solution vector and number of elements to disp with name
