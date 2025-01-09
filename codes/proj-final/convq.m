@@ -6,6 +6,10 @@ lambda = E * nu / ((1 + nu) * (1 - 2 * nu));
 mu     = E / (2 * (1 + nu));
 D      = [lambda + 2 * mu, lambda, 0; lambda, lambda + 2 * mu, 0; 0, 0, mu];%根据note L11算出D矩阵
 
+%loop修改思路
+%应力应变问题每个节点有两个自由度（位移u,v）
+%应力应变问题中，刚度矩阵由应变-位移矩阵B和材料刚度矩阵D乘积确定
+%形函数导数用于构建应变-位移矩阵B，而非计算梯度
 
 % exact solution
 exact = @(x,y) x*(1-x)*y*(1-y);
