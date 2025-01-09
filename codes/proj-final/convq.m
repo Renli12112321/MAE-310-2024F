@@ -106,8 +106,8 @@ n_eq = counter;
 LM = ID(IEN);
 
 % allocate the stiffness matrix and load vector
-K = spalloc(n_eq, n_eq, 9 * n_eq);
-F = zeros(n_eq, 1);
+K = spalloc(2*n_eq, 2*n_eq, 9 * n_eq);
+F = zeros(2*n_eq, 1);
 
 % loop over element to assembly the matrix and vector
 for ee = 1 : n_el
@@ -115,7 +115,7 @@ for ee = 1 : n_el
   y_ele = y_coor( IEN(ee, 1:n_en) );
   
   k_ele = zeros(2*n_en, 2*n_en); % element stiffness matrix
-  f_ele = zeros(n_en, 1);    % element load vector
+  f_ele = zeros(2*n_en, 1);    % element load vector
   
   for ll = 1 : n_int
     x_l = 0.0; y_l = 0.0;
