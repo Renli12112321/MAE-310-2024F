@@ -103,13 +103,16 @@ for ex = 1 : n_el_x
 end
 
 % ID array
+% ID array
 ID = zeros(n_np,2);
 counter = 0;
 for ny = 2 : n_np_y - 1
   for nx = 2 : n_np_x - 1
     index = (ny-1)*n_np_x + nx;
     counter = counter + 1;
-    ID(index) = counter;  
+    ID(index,1) = counter;  
+    counter = counter + 1;
+    ID(index,2) = counter; 
   end
 end
 
@@ -118,8 +121,8 @@ n_eq = counter;
 LM = ID(IEN);
 
 % allocate the stiffness matrix and load vector
-K = spalloc(2*n_eq, 2*n_eq, 9 * n_eq);
-F = zeros(2*n_eq, 1);
+K = zeros(n_eq, n_eq);
+F = zeros(n_eq, 1);
 
 % loop over element to assembly the matrix and vector
 for ee = 1 : n_el
@@ -177,14 +180,14 @@ for ee = 1 : n_el
     end % end of aa loop
   end % end of quadrature loop
  
-  for aa = 1:n_en
+ for aa = 1:n_en
     for dirA = 1:2 % 方向：1=u, 2=v
-        PP = 2 * (LM(ee, aa) - 1) + dirA;
+        PP = ID (IEN(ee , aa), dirA);
         if PP > 0
             F(PP) = F(PP) + f_ele(2*aa-2+dirA);
             for bb = 1:n_en
                 for dirB = 1:2 % 方向：1=u, 2=v
-                    QQ = 2 * (LM(ee, bb) - 1) + dirB;
+                    QQ = ID (IEN(ee , bb), dirB);
                     if QQ > 0
                         K(PP, QQ) = K(PP, QQ) + k_ele(2*aa-2+dirA, 2*bb-2+dirB);
                     end
@@ -207,13 +210,13 @@ for ii = 1 : n_np
     for jj = 1 : 2
   index = ID(ii , jj);
   if index > 0
-    disp(ii) = dn(index);
+    disp(ii , jj) = dn(index);
   else
     % modify disp with the g data. Here it does nothing because g is zero
   end
     end
 end
-
+save("disp", "disp", "n_el_x", "n_el_y");
   % calculate the error
     L2 = 0; H1 = 0;
 
