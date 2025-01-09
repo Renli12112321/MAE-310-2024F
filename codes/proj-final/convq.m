@@ -4,19 +4,42 @@ E      = 1e9;   %杨氏模量
 nu     = 0.3;   %泊松比
 lambda = E * nu / ((1 + nu) * (1 - 2 * nu));
 mu     = E / (2 * (1 + nu));
-D      = [lambda + 2 * mu, lambda, 0; lambda, lambda + 2 * mu, 0; 0, 0, mu];%根据note L11算出D矩阵
+D      = [lambda + 2 * mu, lambda,          0; 
+          lambda,          lambda + 2 * mu, 0; 
+          0,               0,               mu];%根据note L11算出D矩阵
+
 
 %loop修改思路
 %应力应变问题每个节点有两个自由度（位移u,v）
 %应力应变问题中，刚度矩阵由应变-位移矩阵B和材料刚度矩阵D乘积确定
 %形函数导数用于构建应变-位移矩阵B，而非计算梯度
 
-% exact solution
-exact = @(x,y) x*(1-x)*y*(1-y);
-exact_x = @(x,y) (1-2*x)*y*(1-y);
-exact_y = @(x,y) x*(1-x)*(1-2*y);
+% 假设解
+u_exact = @(x, y) x*(1-x)*y*(1-y);
+v_exact = @(x, y) x*(1-x)*y*(1-y);
 
-%f = @(x,y) 2.0*kappa*x*(1-x) + 2.0*kappa*y*(1-y); % source term
+% 一阶导数
+u_x = @(x, y) (1 - 2 * x) * y * (1 - y); % du/dx
+u_y = @(x, y) x * (1 - x) * (1 - 2 * y); % du/dy
+v_x = @(x, y) (1 - 2 * x) * y * (1 - y); % dv/dx
+v_y = @(x, y) x * (1 - x) * (1 - 2 * y); % dv/dy
+
+% 二阶导数
+u_xx = @(x, y) -2 * y * (1 - y); % d²u/dx²
+u_yy = @(x, y) -2 * x * (1 - x); % d²u/dy²
+v_xx = @(x, y) -2 * y * (1 - y); % d²v/dx²
+v_yy = @(x, y) -2 * x * (1 - x); % d²v/dy²
+
+% 拉普拉斯算子
+laplacian_u = @(x, y) u_xx(x, y) + u_yy(x, y);
+laplacian_v = @(x, y) v_xx(x, y) + v_yy(x, y);
+
+% 体力分量
+f_x = @(x, y) -lambda * laplacian_u(x, y) - (lambda + 2 * mu) * v_yy(x, y);
+f_y = @(x, y) -lambda * laplacian_v(x, y) - (lambda + 2 * mu) * u_xx(x, y);
+
+% 体力矢量
+body_force = @(x, y) [f_x(x, y); f_y(x, y)];
 
 % quadrature rule
 n_int_xi  = 3;
@@ -91,7 +114,7 @@ for ee = 1 : n_el
   x_ele = x_coor( IEN(ee, 1:n_en) );
   y_ele = y_coor( IEN(ee, 1:n_en) );
   
-  k_ele = zeros(n_en, n_en); % element stiffness matrix
+  k_ele = zeros(2*n_en, 2*n_en); % element stiffness matrix
   f_ele = zeros(n_en, 1);    % element load vector
   
   for ll = 1 : n_int
@@ -110,13 +133,17 @@ for ee = 1 : n_el
     
     detJ = dx_dxi * dy_deta - dx_deta * dy_dxi;
     
+    bf = body_force(x_l, y_l); 
+
     for aa = 1 : n_en
       Na = Quad(aa, xi(ll), eta(ll));
       [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
       Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
       Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
       
-      f_ele(aa) = f_ele(aa) + weight(ll) * detJ * f(x_l, y_l) * Na;
+      for dir = 1:2 % 方向：1=u, 2=v
+          f_ele(2*aa-2+dir) = f_ele(2*aa-2+dir) + weight(ll) * detJ * bf(dir) * Na;
+      end
       
       for bb = 1 : n_en
         Nb = Quad(bb, xi(ll), eta(ll));
@@ -124,28 +151,38 @@ for ee = 1 : n_el
         Nb_x = (Nb_xi * dy_deta - Nb_eta * dy_dxi) / detJ;
         Nb_y = (-Nb_xi * dx_deta + Nb_eta * dx_dxi) / detJ;
         
-        k_ele(aa, bb) = k_ele(aa,bb) + weight(ll) * detJ * kappa * (Na_x * Nb_x + Na_y * Nb_y);
+        B = zeros(3, n_en * 2); % 应变-位移矩阵
+        for aa = 1:n_en
+          B(1, 2*aa-1) = Na_x; % epsilon_xx
+          B(2, 2*aa)   = Na_y; % epsilon_yy
+          B(3, 2*aa-1) = Na_y; % gamma_xy
+          B(3, 2*aa)   = Na_x; % gamma_xy
+        end
+
+      k_ele = k_ele + B' * D * B * detJ * weight(ll);
+
       end % end of bb loop
     end % end of aa loop
   end % end of quadrature loop
  
-  for aa = 1 : n_en
-    PP = LM(ee, aa);
-    if PP > 0
-      F(PP) = F(PP) + f_ele(aa);
-      
-      for bb = 1 : n_en
-        QQ = LM(ee, bb);
-        if QQ > 0
-          K(PP, QQ) = K(PP, QQ) + k_ele(aa, bb);
-        else
-          % modify F with the boundary data
-          % here we do nothing because the boundary data g is zero or
-          % homogeneous
+  for aa = 1:n_en
+    for dirA = 1:2 % 方向：1=u, 2=v
+        PP = 2 * (LM(ee, aa) - 1) + dirA;
+        if PP > 0
+            F(PP) = F(PP) + f_ele(2*aa-2+dirA);
+            for bb = 1:n_en
+                for dirB = 1:2 % 方向：1=u, 2=v
+                    QQ = 2 * (LM(ee, bb) - 1) + dirB;
+                    if QQ > 0
+                        K(PP, QQ) = K(PP, QQ) + k_ele(2*aa-2+dirA, 2*bb-2+dirB);
+                    end
+                end
+            end
         end
-      end  
     end
   end
+
+  
 end
 
 % solve the stiffness matrix
