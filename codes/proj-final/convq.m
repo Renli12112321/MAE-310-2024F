@@ -149,6 +149,7 @@ for ee = 1 : n_el
     detJ = dx_dxi * dy_deta - dx_deta * dy_dxi;
     
     bf = body_force(x_l, y_l); 
+    Ba = zeros(3, 2); % 应变-位移矩阵
 
     for aa = 1 : n_en
       Na = Quad(aa, xi(ll), eta(ll));
@@ -159,22 +160,33 @@ for ee = 1 : n_el
       for dir = 1:2 % 方向：1=u, 2=v
           f_ele(2*aa-2+dir) = f_ele(2*aa-2+dir) + weight(ll) * detJ * bf(dir) * Na;
       end
-      
+
+      Ba(1, 1) = Na_x; 
+      Ba(2, 2) = Na_y; 
+      Ba(3, 1) = Na_y; 
+      Ba(3, 2) = Na_x; 
+
+      Bb = zeros(3,2); % 应变-位移矩阵
       for bb = 1 : n_en
         Nb = Quad(bb, xi(ll), eta(ll));
         [Nb_xi, Nb_eta] = Quad_grad(bb, xi(ll), eta(ll));
         Nb_x = (Nb_xi * dy_deta - Nb_eta * dy_dxi) / detJ;
         Nb_y = (-Nb_xi * dx_deta + Nb_eta * dx_dxi) / detJ;
-        
-        B = zeros(3, n_en * 2); % 应变-位移矩阵
-        for ii = 1:n_en
-          B(1, 2*ii-1) = Na_x; % epsilon_xx
-          B(2, 2*ii)   = Na_y; % epsilon_yy
-          B(3, 2*ii-1) = Na_y; % gamma_xy
-          B(3, 2*ii)   = Na_x; % gamma_xy
+
+        Bb(1, 1) = Nb_x; 
+        Bb(2, 2) = Nb_y; 
+        Bb(3, 1) = Nb_y; 
+        Bb(3, 2) = Nb_x; 
+
+        for ii = 1:2
+            for jj = 1:2
+                k_ele(2*(aa-1)+ii,2*(bb-1)+jj) = k_ele(2*(aa-1)+ii,2*(bb-1)+jj)+...
+                weight(ll)*detJ*((ii==1)*[1,0]+(ii==2)*[0,1])* Ba'*D* Bb*...
+                ((jj==1)*[1;0]+(jj==2)*[0;1]);
+            end
         end
 
-      k_ele = k_ele + B' * D * B * detJ * weight(ll);
+      %k_ele = k_ele + Ba' * D * Bb * detJ * weight(ll);
 
       end % end of bb loop
     end % end of aa loop
@@ -229,8 +241,8 @@ save("disp", "disp", "n_el_x", "n_el_y");
             x_l = 0.0; y_l = 0.0;
             dx_dxi = 0.0; dx_deta = 0.0;
             dy_dxi = 0.0; dy_deta = 0.0;
-            uh = 0.0; 
-            uh_x = 0.0; uh_y = 0.0;
+            uh = zeros(2,1); 
+            uh_x = zeros(2,1); uh_y = zeros(2,1);
             for aa = 1 : n_en
                 x_l = x_l + x_ele(aa) * Quad(aa, xi(ll), eta(ll));
                 y_l = y_l + y_ele(aa) * Quad(aa, xi(ll), eta(ll));
@@ -247,13 +259,15 @@ save("disp", "disp", "n_el_x", "n_el_y");
                 [Na_xi, Na_eta] = Quad_grad(aa, xi(ll), eta(ll));
                 Na_x = (Na_xi * dy_deta - Na_eta * dy_dxi) / detJ;
                 Na_y = (-Na_xi * dx_deta + Na_eta * dx_dxi) / detJ;
-                uh   = uh   + u_ele(aa) * Na;
-                uh_x = uh_x + u_ele(aa) * Na_x;
-                uh_y = uh_y + u_ele(aa) * Na_y;
+                for dir = 1:2
+                    uh(dir)   = uh(dir)   + u_ele(aa,dir) * Na;
+                    uh_x(dir) = uh_x(dir) + u_ele(aa,dir) * Na_x;
+                    uh_y(dir) = uh_y(dir) + u_ele(aa,dir) * Na_y;
+                end
             end
 
-            L2 = L2 + weight(ll) * (uh - u_exact(x_l,y_l))^2 * detJ;
-            H1 = H1 + weight(ll) * ((uh_x - u_x(x_l,y_l) )^2 + (uh_y - u_y(x_l,y_l) )^2) * detJ;
+            L2 = L2 + weight(ll) * (uh - u_exact(x_l,y_l)).^2 * detJ;
+            H1 = H1 + weight(ll) * ((uh_x - u_x(x_l,y_l) ).^2 + (uh_y - u_y(x_l,y_l) ).^2) * detJ;
 
         end
     end
@@ -262,8 +276,8 @@ save("disp", "disp", "n_el_x", "n_el_y");
     H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_me/2-2) = log(L2);
-    logeH1(n_me/2-2) = log(H1);
+    logeL2(n_me/2-2) = log(L2(1));
+    logeH1(n_me/2-2) = log(H1(1));
     logh  (n_me/2-2) = log(hx);
 
 end
