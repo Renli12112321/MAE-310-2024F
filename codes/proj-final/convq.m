@@ -42,13 +42,15 @@ u_yy = @(x, y) -2 * x * (1 - x); % d²u/dy²
 v_xx = @(x, y) -2 * y * (1 - y); % d²v/dx²
 v_yy = @(x, y) -2 * x * (1 - x); % d²v/dy²
 
-% 拉普拉斯算子
-laplacian_u = @(x, y) u_xx(x, y) + u_yy(x, y);
-laplacian_v = @(x, y) v_xx(x, y) + v_yy(x, y);
 
 % 体力分量
-f_x = @(x, y) -lambda * laplacian_u(x, y) - (lambda + 2 * mu) * v_yy(x, y);
-f_y = @(x, y) -lambda * laplacian_v(x, y) - (lambda + 2 * mu) * u_xx(x, y);
+f_x = @(x, y) ...
+    (E * nu * ((x - 1) * (y - 1) + x * y + x * (y - 1) + y * (x - 1))) / (nu^2 - 1) ...
+    + (2 * E * y * (y - 1) - E * (nu / 2 - 1 / 2) * (x - 1) * (y - 1) - E * (nu / 2 - 1 / 2) * (x * y + 2 * x * (x - 1) + x * (y - 1) + y * (x - 1))) / (nu^2 - 1);
+
+f_y = @(x, y) ...
+    (E * nu * ((x - 1) * (y - 1) + x * y + x * (y - 1) + y * (x - 1))) / (nu^2 - 1) ...
+    + (2 * E * x * (x - 1) - E * (nu / 2 - 1 / 2) * (x - 1) * (y - 1) - E * (nu / 2 - 1 / 2) * (x * y + x * (y - 1) + y * (x - 1) + 2 * y * (y - 1))) / (nu^2 - 1);
 
 % 体力矢量
 body_force = @(x, y) [f_x(x, y); f_y(x, y)];
@@ -266,8 +268,8 @@ save("disp", "disp", "n_el_x", "n_el_y");
                 end
             end
 
-            L2 = L2 + weight(ll) * (uh - u_exact(x_l,y_l)).^2 * detJ;
-            H1 = H1 + weight(ll) * ((uh_x - u_x(x_l,y_l) ).^2 + (uh_y - u_y(x_l,y_l) ).^2) * detJ;
+            L2 = L2 + weight(ll) * (uh - u_exact(x_l,y_l))'*(uh - u_exact(x_l,y_l)) * detJ;
+            H1 = H1 + weight(ll) * ((uh_x - u_x(x_l,y_l) )'*(uh_x - u_x(x_l,y_l) ) + (uh_y - u_y(x_l,y_l) )'*(uh_y - u_y(x_l,y_l) )) * detJ;
 
         end
     end
@@ -276,8 +278,8 @@ save("disp", "disp", "n_el_x", "n_el_y");
     H1 = sqrt(H1); 
 
     % 保存该mesh结果到数组
-    logeL2(n_me/2-2) = log(L2(1));
-    logeH1(n_me/2-2) = log(H1(1));
+    logeL2(n_me/2-2) = log(L2);
+    logeH1(n_me/2-2) = log(H1);
     logh  (n_me/2-2) = log(hx);
 
 end
