@@ -4,10 +4,15 @@ E      = 1e9;   %杨氏模量
 nu     = 0.3;   %泊松比
 lambda = E * nu / ((1 + nu) * (1 - 2 * nu));
 mu     = E / (2 * (1 + nu));
-D      = [lambda + 2 * mu, lambda,          0;
-    lambda,          lambda + 2 * mu, 0;
-    0,               0,               mu];%根据note L11算出D矩阵
+%D      = [lambda + 2 * mu, lambda,          0;
+    %lambda,          lambda + 2 * mu, 0;
+    %0,               0,               mu];%根据note L11算出D矩阵
 
+%不是，为什么L11开头的公式直接就是错的，两种方法算出来的D不相等啊
+
+D      = [E/(1-nu^2),        nu*E/(1-nu^2),          0;
+          nu*E/(1-nu^2),    E/(1-nu^2),              0;
+          0,                0,               E/2/(1+nu)];
 
 %loop修改思路:
 %应力应变问题每个节点有两个自由度（位移u,v）
